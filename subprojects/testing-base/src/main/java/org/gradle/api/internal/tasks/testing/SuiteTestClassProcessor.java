@@ -40,8 +40,8 @@ public class SuiteTestClassProcessor implements TestClassProcessor {
             resultProcessor.started(suiteDescriptor, new TestStartEvent(clock.getCurrentTime()));
             processor.startProcessing(resultProcessor);
         } catch (Throwable t) {
-            resultProcessor.failure(suiteDescriptor.getId(), new TestSuiteExecutionException(String.format(
-                    "Could not start %s.", suiteDescriptor), t));
+            Throwable rawFailure = new TestSuiteExecutionException(String.format("Could not start %s.", suiteDescriptor), t);
+            resultProcessor.failure(suiteDescriptor.getId(), DefaultTestFailure.fromTestFrameworkFailure(rawFailure));
         }
     }
 
@@ -50,8 +50,8 @@ public class SuiteTestClassProcessor implements TestClassProcessor {
         try {
             processor.processTestClass(testClass);
         } catch (Throwable t) {
-            resultProcessor.failure(suiteDescriptor.getId(), new TestSuiteExecutionException(String.format(
-                    "Could not execute test class '%s'.", testClass.getTestClassName()), t));
+            Throwable rawFailure = new TestSuiteExecutionException(String.format("Could not execute test class '%s'.", testClass.getTestClassName()), t);
+            resultProcessor.failure(suiteDescriptor.getId(), DefaultTestFailure.fromTestFrameworkFailure(rawFailure));
         }
     }
 
@@ -60,8 +60,8 @@ public class SuiteTestClassProcessor implements TestClassProcessor {
         try {
             processor.stop();
         } catch (Throwable t) {
-            resultProcessor.failure(suiteDescriptor.getId(), new TestSuiteExecutionException(String.format(
-                    "Could not complete execution for %s.", suiteDescriptor), t));
+            Throwable rawFailure = new TestSuiteExecutionException(String.format("Could not complete execution for %s.", suiteDescriptor), t);
+            resultProcessor.failure(suiteDescriptor.getId(), DefaultTestFailure.fromTestFrameworkFailure(rawFailure));
         } finally {
             resultProcessor.completed(suiteDescriptor.getId(), new TestCompleteEvent(clock.getCurrentTime()));
         }

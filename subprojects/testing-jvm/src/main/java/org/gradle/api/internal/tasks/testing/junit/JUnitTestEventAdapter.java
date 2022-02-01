@@ -17,13 +17,17 @@
 package org.gradle.api.internal.tasks.testing.junit;
 
 import org.gradle.api.internal.tasks.testing.DefaultTestDescriptor;
+import org.gradle.api.internal.tasks.testing.DefaultTestFailure;
 import org.gradle.api.internal.tasks.testing.TestCompleteEvent;
 import org.gradle.api.internal.tasks.testing.TestDescriptorInternal;
 import org.gradle.api.internal.tasks.testing.TestResultProcessor;
 import org.gradle.api.internal.tasks.testing.TestStartEvent;
+import org.gradle.api.tasks.testing.TestFailure;
 import org.gradle.api.tasks.testing.TestResult;
 import org.gradle.internal.id.IdGenerator;
 import org.gradle.internal.time.Clock;
+import org.junit.Assert;
+import org.junit.ComparisonFailure;
 import org.junit.runner.Description;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
@@ -74,9 +78,26 @@ public class JUnitTestEventAdapter extends RunListener {
             testInternal = descriptor;
             resultProcessor.started(testInternal, startEvent());
         }
-        resultProcessor.failure(testInternal.getId(), failure.getException());
+
+        Throwable exception = failure.getException();
+        reportFailure(testInternal.getId(), exception);
         if (needEndEvent) {
             resultProcessor.completed(testInternal.getId(), new TestCompleteEvent(clock.getCurrentTime()));
+        }
+    }
+
+    private void reportFailure(Object descriptorId, Throwable failure) {
+        // According to https://junit.org/junit4/javadoc/latest/overview-tree.html, JUnit assertion failures can be expressed with the following exceptions:
+        // - java.lang.AssertionError: general assertion errors, i.e. test code contains assert statements
+        // - org.junit.ComparisonFailure: when assertEquals (and similar assertion) fails; test code can throw it directly
+        // All assertion errors are subclasses of the AssertionError class. If the received failure is not an instance of AssertionError then it is categorized as a framework failure.
+        if (failure instanceof ComparisonFailure) {
+            ComparisonFailure comparisonFailure = (ComparisonFailure) failure;
+            resultProcessor.failure(descriptorId, DefaultTestFailure.fromTestAssertionFailure(failure, comparisonFailure.getExpected(), comparisonFailure.getActual()));
+        } else if (failure instanceof AssertionError) {
+            resultProcessor.failure(descriptorId, DefaultTestFailure.fromTestAssertionFailure(failure, null, null));
+        } else {
+            resultProcessor.failure(descriptorId, DefaultTestFailure.fromTestFrameworkFailure(failure));
         }
     }
 

@@ -18,6 +18,7 @@ package org.gradle.nativeplatform.test.xctest.internal.execution;
 
 import com.google.common.base.Joiner;
 import org.gradle.api.internal.tasks.testing.DefaultTestClassDescriptor;
+import org.gradle.api.internal.tasks.testing.DefaultTestFailure;
 import org.gradle.api.internal.tasks.testing.DefaultTestMethodDescriptor;
 import org.gradle.api.internal.tasks.testing.DefaultTestOutputEvent;
 import org.gradle.api.internal.tasks.testing.TestCompleteEvent;
@@ -136,7 +137,8 @@ class XCTestScraper implements TextStream {
                         boolean failed = status.contains("failed");
                         if (failed) {
                             resultType = TestResult.ResultType.FAILURE;
-                            processor.failure(testDescriptor.getId(), new Throwable(Joiner.on(TextUtil.getPlatformLineSeparator()).join(xcTestDescriptor.getMessages())));
+                            Throwable failure = new Throwable(Joiner.on(TextUtil.getPlatformLineSeparator()).join(xcTestDescriptor.getMessages()));
+                            processor.failure(testDescriptor.getId(), DefaultTestFailure.fromTestFrameworkFailure(failure));
                         }
 
                         processor.completed(testDescriptor.getId(), new TestCompleteEvent(clock.getCurrentTime(), resultType));
@@ -182,7 +184,7 @@ class XCTestScraper implements TextStream {
                 } else {
                     testId = rootTestSuiteId;
                 }
-                processor.failure(testId, failure);
+                processor.failure(testId, DefaultTestFailure.fromTestFrameworkFailure(failure));
                 testDescriptors.clear();
             }
         }
